@@ -15,6 +15,7 @@ from . import trips as trips_mod
 from . import weather
 from .binning import bin_trips
 from .evaluate import evaluate_baselines
+from .experiment import run_weather_experiment
 
 
 def _config(path: str) -> dict:
@@ -129,6 +130,39 @@ def cmd_evaluate_baselines(args) -> None:
     print(f"Saved {out}")
 
 
+def cmd_compare_weather(args) -> None:
+    cfg = _config(args.config)
+    loc, w, paths = cfg["location"], cfg["weather"], cfg["paths"]
+    cache_dir = Path(paths["weather_cache_dir"])
+    fc = weather.load_cache(weather.cache_path(cache_dir, "forecast", loc["latitude"], loc["longitude"], w["forecast_model"]))
+    oracle = weather.load_cache(weather.cache_path(cache_dir, "reanalysis", loc["latitude"], loc["longitude"]))
+    if fc is None or oracle is None:
+        raise SystemExit("weather cache missing: run `update-weather` first")
+    trips_path = args.trips or paths["trips_file"]
+    segments_path = args.segments or paths["segments_file"]
+    clean, issues = trips_mod.validate_trips(pd.read_csv(trips_path), pd.read_csv(segments_path))
+    for issue in issues:
+        print("data issue:", issue)
+    series = bin_trips(clean, bin_minutes=15)
+    results, comps, notes = run_weather_experiment(series, fc, oracle, seeds=tuple(args.seeds), mlp_epochs=args.epochs)
+    label = results["data_label"].iloc[0]
+    table = results.pivot_table(index=["horizon_min", "model"], columns="feature_set", values="mae_min")
+    print(f"\nTest MAE in minutes (data_label={label}; {len(clean)} trips)")
+    print(table.round(2).to_string())
+    print("\nWith vs without weather, paired block bootstrap (negative = weather lowers error):")
+    print(comps.drop(columns="data_label").round(3).to_string(index=False))
+    for note in notes:
+        print("NOTE:", note)
+    if label != "observed":
+        print(f"\nWARNING: data is '{label}'. These numbers say nothing about real travel times or real weather effects.")
+    print("traffic+oracle uses reanalysis weather and is an upper bound, not a deployable model.")
+    out = Path(args.out)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    results.to_csv(out, index=False)
+    comps.to_csv(out.with_name(out.stem + "_comparisons.csv"), index=False)
+    print(f"Saved {out}")
+
+
 def main() -> None:
     p = argparse.ArgumentParser(prog="atmosnofear")
     p.add_argument("--config", default="configs/project.toml")
@@ -165,6 +199,13 @@ def main() -> None:
     eb.add_argument("--segments", help="override segments file from the config")
     eb.add_argument("--out", default="runs/baselines.csv")
     eb.set_defaults(fn=cmd_evaluate_baselines)
+    cw = sub.add_parser("compare-weather", help="GBM and neural network, with vs without weather")
+    cw.add_argument("--trips", help="override trips file from the config")
+    cw.add_argument("--segments", help="override segments file from the config")
+    cw.add_argument("--seeds", type=int, nargs="+", default=[0, 1, 2], help="network seeds (ensembled)")
+    cw.add_argument("--epochs", type=int, default=200)
+    cw.add_argument("--out", default="runs/compare_weather.csv")
+    cw.set_defaults(fn=cmd_compare_weather)
     args = p.parse_args()
     args.fn(args)
 

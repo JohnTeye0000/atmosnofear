@@ -55,6 +55,15 @@ python -m atmosnofear.cli evaluate-baselines --trips data/synthetic/trips.csv --
 
 With real trips in `data/private/`, run `python -m atmosnofear.cli evaluate-baselines` and the output carries the data label.
 
+Gradient boosting and a PyTorch network, each with and without weather (needs `pip install -e ".[ml]"` and `update-weather` first):
+
+```bash
+python -m atmosnofear.cli compare-weather --trips data/synthetic/trips.csv --segments data/synthetic/segments.csv
+python -m atmosnofear.cli compare-weather      # real trips from data/private/
+```
+
+Three feature sets per model: `traffic`, `traffic+forecast` (archived NWP forecast, deployable) and `traffic+oracle` (reanalysis, an upper bound only). The comparison is a paired block bootstrap by day. The output warns when there are too few rainy examples or test days, and that some "significant" cells are expected by chance across many comparisons. The synthetic run is a **negative control**: that traffic has no weather dependence, so weather should not help.
+
 ## Code map
 
 | Module | Purpose |
@@ -67,6 +76,8 @@ With real trips in `data/private/`, run `python -m atmosnofear.cli evaluate-base
 | `split.py` | Chronological train/val/test with a gap |
 | `baselines.py` | Historical mean, persistence |
 | `metrics.py` | MAE, RMSE, paired block bootstrap |
+| `models.py` | Gradient boosting and a small PyTorch network on identical, train-fitted features |
+| `experiment.py` | With vs without weather: same split, same tuning, paired bootstrap, power warnings |
 | `evaluate.py` | Baselines across horizons, stamped with the data label |
 | `synthetic.py` | Labelled fake trips for software tests only |
 
