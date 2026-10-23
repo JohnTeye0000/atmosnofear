@@ -13,6 +13,16 @@ def rmse(y_true, y_pred) -> float:
     return float(np.sqrt(np.mean((np.asarray(y_true, float) - np.asarray(y_pred, float)) ** 2)))
 
 
+def interval_coverage(y_true, lower, upper) -> float:
+    """Share of true values inside [lower, upper]. For a q10-q90 interval the target is 0.80."""
+    y = np.asarray(y_true, float)
+    return float(np.mean((y >= np.asarray(lower, float)) & (y <= np.asarray(upper, float))))
+
+
+def mean_interval_width(lower, upper) -> float:
+    return float(np.mean(np.asarray(upper, float) - np.asarray(lower, float)))
+
+
 def paired_mae_difference(y_true, pred_a, pred_b, blocks, n_boot: int = 2000, seed: int = 0,
                           alpha: float = 0.05) -> dict:
     """Mean of (|err_a| - |err_b|) with a block-bootstrap confidence interval.

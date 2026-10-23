@@ -9,6 +9,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from . import mutra as mutra_mod
 from . import segments as seg_mod
 from . import synthetic
 from . import trips as trips_mod
@@ -16,6 +17,7 @@ from . import weather
 from .binning import bin_trips
 from .evaluate import evaluate_baselines
 from .experiment import run_weather_experiment
+from .zoo import run_model_zoo
 
 
 def _config(path: str) -> dict:
@@ -145,22 +147,95 @@ def cmd_compare_weather(args) -> None:
         print("data issue:", issue)
     series = bin_trips(clean, bin_minutes=15)
     results, comps, notes = run_weather_experiment(series, fc, oracle, seeds=tuple(args.seeds), mlp_epochs=args.epochs)
+    _report(results, comps, notes, f"{len(clean)} trips", Path(args.out))
+
+
+LABEL_WARNINGS = {
+    "synthetic": "data is synthetic. These numbers say nothing about real travel times or real weather effects.",
+    "provider_estimate": "travel times are a commercial provider's estimates (not our own observations). "
+                         "Results describe this dataset and place only.",
+}
+
+
+def _report(results, comps, notes, size_text: str, out: Path) -> None:
     label = results["data_label"].iloc[0]
-    table = results.pivot_table(index=["horizon_min", "model"], columns="feature_set", values="mae_min")
-    print(f"\nTest MAE in minutes (data_label={label}; {len(clean)} trips)")
+    table = results.pivot_table(index=["horizon_min", "model"], columns="feature_set", values="mae_s")
+    print(f"\nTest MAE in seconds (data_label={label}; {size_text})")
     print(table.round(2).to_string())
-    print("\nWith vs without weather, paired block bootstrap (negative = weather lowers error):")
-    print(comps.drop(columns="data_label").round(3).to_string(index=False))
+    print("\nWith vs without weather, paired block bootstrap by day (negative = weather lowers error, seconds):")
+    cols = ["horizon_min", "model", "with", "mean_diff_s", "ci_low_s", "ci_high_s", "n", "n_days", "verdict"]
+    print(comps[[c for c in cols if c in comps.columns]].round(3).to_string(index=False))
     for note in notes:
         print("NOTE:", note)
-    if label != "observed":
-        print(f"\nWARNING: data is '{label}'. These numbers say nothing about real travel times or real weather effects.")
-    print("traffic+oracle uses reanalysis weather and is an upper bound, not a deployable model.")
-    out = Path(args.out)
+    if label in LABEL_WARNINGS:
+        print(f"\nWARNING: {LABEL_WARNINGS[label]}")
+    print("traffic+oracle and traffic+provider use weather that was not available in advance: upper bounds, not deployable.")
     out.parent.mkdir(parents=True, exist_ok=True)
     results.to_csv(out, index=False)
     comps.to_csv(out.with_name(out.stem + "_comparisons.csv"), index=False)
     print(f"Saved {out}")
+
+
+def _report_zoo(results, comps, intervals, notes, size_text: str, out: Path) -> None:
+    label = results["data_label"].iloc[0]
+    print(f"\nTest MAE in seconds, traffic-only models (data_label={label}; {size_text})")
+    base = results[results.feature_set.isin(["traffic", "last_obs", "calendar"])].copy()
+    base["selected"] = base["selected_by_validation"].map({True: "<- chosen on validation", False: ""})
+    print(base[["horizon_min", "model", "val_mae_s", "mae_s", "vs_persistence_pct", "selected"]]
+          .round(2).to_string(index=False))
+    print("\nWith weather vs traffic-only, paired bootstrap by day (negative = weather lowers error, seconds):")
+    cols = ["horizon_min", "model", "with", "mean_diff_s", "ci_low_s", "ci_high_s", "n_days", "verdict"]
+    print(comps[cols].round(3).to_string(index=False))
+    print("\nPrediction intervals (q10-q90, nominal coverage 0.80):")
+    print(intervals[["horizon_min", "model", "feature_set", "coverage", "mean_width_s"]].round(3).to_string(index=False))
+    for note in notes:
+        print("NOTE:", note)
+    if label in LABEL_WARNINGS:
+        print(f"\nWARNING: {LABEL_WARNINGS[label]}")
+    print("traffic+provider uses weather that was not available in advance: an upper bound, not deployable.")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    results.to_csv(out, index=False)
+    comps.to_csv(out.with_name(out.stem + "_comparisons.csv"), index=False)
+    intervals.to_csv(out.with_name(out.stem + "_intervals.csv"), index=False)
+    print(f"Saved {out}")
+
+
+def cmd_run_zoo(args) -> None:
+    cfg = _config(args.config)
+    loc, w, paths = cfg["location"], cfg["weather"], cfg["paths"]
+    root = Path(paths["dataset_dir"])
+    lat, lon = mutra_mod.corridor_centre(root / "metadata" / "segment_metadata.csv")
+    start, end = date.fromisoformat(w["start_date"]), date.fromisoformat(w["end_date"])
+    fc = weather.update_cache("forecast", lat, lon, w["variables"], start, Path(paths["weather_cache_dir"]), end,
+                              model=w["forecast_model"])
+    csv = root / "data" / "MUTra_CDMX_completed.csv"
+    series = mutra_mod.load_series(csv, bin_minutes=15)
+    provider = mutra_mod.load_provider_weather(csv)
+    print(f"Model zoo on {len(series)} bins, {series['segment_id'].nunique()} segments; seeds {args.seeds}, "
+          f"epochs {args.epochs}, lags {args.lags}")
+    results, comps, intervals, notes = run_model_zoo(
+        series, fc, provider, seeds=tuple(args.seeds), epochs=args.epochs, batch_size=args.batch_size,
+        n_lags=args.lags, tz=loc["timezone"])
+    _report_zoo(results, comps, intervals, notes, f"{len(series)} bins", Path(args.out))
+
+
+def cmd_run_mutra(args) -> None:
+    cfg = _config(args.config)
+    loc, w, paths = cfg["location"], cfg["weather"], cfg["paths"]
+    root = Path(paths["dataset_dir"])
+    lat, lon = mutra_mod.corridor_centre(root / "metadata" / "segment_metadata.csv")
+    cache_dir = Path(paths["weather_cache_dir"])
+    start, end = date.fromisoformat(w["start_date"]), date.fromisoformat(w["end_date"])
+    fc = weather.update_cache("forecast", lat, lon, w["variables"], start, cache_dir, end, model=w["forecast_model"])
+    oracle = weather.update_cache("reanalysis", lat, lon, w["variables"], start, cache_dir, end)
+    csv = root / "data" / "MUTra_CDMX_completed.csv"
+    series = mutra_mod.load_series(csv, bin_minutes=15)
+    provider = mutra_mod.load_provider_weather(csv)
+    print(f"Mexico City corridor ({lat:.4f}, {lon:.4f}): {len(series)} 15-minute bins, {series['segment_id'].nunique()} segments")
+    results, comps, notes = run_weather_experiment(
+        series, fc, oracle, seeds=tuple(args.seeds), mlp_epochs=args.epochs, weather_provider=provider,
+        tz=loc["timezone"], mlp_batch_size=args.batch_size)
+    _report(results, comps, notes, f"{len(series)} bins", Path(args.out))
 
 
 def main() -> None:
@@ -206,6 +281,19 @@ def main() -> None:
     cw.add_argument("--epochs", type=int, default=200)
     cw.add_argument("--out", default="runs/compare_weather.csv")
     cw.set_defaults(fn=cmd_compare_weather)
+    rz = sub.add_parser("run-zoo", help="all architectures (GBM, MLP, GRU, quantile, blend) on MUTra-CDMX")
+    rz.add_argument("--seeds", type=int, nargs="+", default=[0, 1])
+    rz.add_argument("--epochs", type=int, default=40)
+    rz.add_argument("--batch-size", type=int, default=1024)
+    rz.add_argument("--lags", type=int, default=12, help="bins of travel-time history (12 = 3 hours)")
+    rz.add_argument("--out", default="runs/zoo.csv")
+    rz.set_defaults(fn=cmd_run_zoo)
+    rm = sub.add_parser("run-mutra", help="full experiment on the MUTra-CDMX proxy dataset (Mexico City)")
+    rm.add_argument("--seeds", type=int, nargs="+", default=[0, 1, 2])
+    rm.add_argument("--epochs", type=int, default=60)
+    rm.add_argument("--batch-size", type=int, default=1024)
+    rm.add_argument("--out", default="runs/mutra.csv")
+    rm.set_defaults(fn=cmd_run_mutra)
     args = p.parse_args()
     args.fn(args)
 

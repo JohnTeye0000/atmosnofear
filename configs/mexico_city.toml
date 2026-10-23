@@ -1,0 +1,16 @@
+# Mexico City proxy dataset (MUTra-CDMX). Same pipeline as the Kumasi config, different place.
+[location]
+name = "Mexico City (Insurgentes Sur corridor)"
+latitude = 19.3670     # set from the mean of segment start points; recomputed by run-mutra
+longitude = -99.1790
+timezone = "America/Mexico_City"
+
+[weather]
+variables = ["temperature_2m", "precipitation", "precipitation_probability", "relative_humidity_2m", "cloud_cover"]
+forecast_model = "ecmwf_ifs025"     # explicit model required: the default series equals reanalysis
+start_date = "2024-11-01"
+end_date = "2025-02-28"
+
+[paths]
+weather_cache_dir = "data/cache/mexico_city"
+dataset_dir = "data/external/mutra/MUTra_CDMX_v4.0-rc1"

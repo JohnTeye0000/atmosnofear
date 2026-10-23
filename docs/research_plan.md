@@ -214,3 +214,21 @@ Deadline: November 2026 (about one week from 2026-10-23). The wet-season test ne
 **Optional proxy (user decision):** the Zindi Accra Mobility data (Sept 2024) could run the same pipeline end to end on real traffic plus weather, labelled as an Accra proxy. Terms unchecked; the user must register and accept them.
 
 **After the deadline:** continue logging through the 2027 wet season, then run Stage C–E.
+
+## 14. Decision: complete the project on an open proxy dataset (2026-10-23)
+
+The Kumasi data does not exist yet and cannot exist in time. The project owner decided to complete the project with a location that has an open dataset. **Kumasi is no longer the study site of the reported experiments.** The pipeline is unchanged and location-agnostic (the Kumasi config and the segment/trip tooling remain), so Kumasi can be added later.
+
+**New primary question (hypothesis, not conclusion):** on a 14.7 km Mexico City corridor (MUTra-CDMX, 20 segments, Nov 2024 – Feb 2025), do weather features available at prediction time reduce 15-, 30- and 60-minute travel-time prediction error compared with otherwise identical models that use traffic history and calendar alone?
+
+**What is unchanged:** chronological split with a gap, leakage rules (section 7), the matched with/without-weather design, paired block bootstrap by day, baselines first, tuning on validation only, no claim beyond the evidence.
+
+**What changed, and what it costs**
+1. **The dataset is not Kumasi.** Findings describe Mexico City only and say nothing about Ghana. The relevance to Kumasi is as a worked, tested method, not a result.
+2. **Travel times are a commercial provider's output (TomTom), not our observations.** Label: `provider_estimate`.
+3. **The period is dry.** Only 2.8% of hours have measurable rain (81 of 2,880 h; 23 rainy days; 7 h at 1 mm or more). The experiment cannot say much about rain. A "no difference detected" result here means low power, not "weather does not matter".
+4. **Forecast-timed weather** comes from Open-Meteo's archived ECMWF forecast. The dataset's own Meteosource weather and Open-Meteo reanalysis are oracle-type upper bounds.
+5. **Licence status is unresolved** (the archive's README says verification is pending; TomTom and Meteosource terms apply). The data is not redistributed.
+6. **Segments are short (150 m to 2 km, medians 18 to 147 s).** Errors are reported in seconds.
+
+**Possible next step if more rain power is wanted:** a second open dataset covering a wet period (for example a US freeway speed benchmark joined to Open-Meteo reanalysis). Not started; its licence terms would need checking first.

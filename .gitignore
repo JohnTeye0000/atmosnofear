@@ -12,6 +12,7 @@ data/raw/
 data/private/
 data/cache/
 data/synthetic/
+data/external/
 *.parquet
 *.sqlite
 
@@ -30,3 +31,5 @@ checkpoints/
 Thumbs.db
 .vscode/
 .idea/
+
+runs_*.log

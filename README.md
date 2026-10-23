@@ -1,10 +1,12 @@
 # AtmosNoFear
 
-Weather-aware travel-time prediction for road segments in Kumasi, Ghana.
+Weather-aware travel-time prediction: gradient boosting and a PyTorch network, with and without weather.
 
-**Research question:** On selected Kumasi road segments, does adding weather information available *at prediction time* improve travel-time prediction compared with otherwise identical models using traffic history alone?
+**Research question:** Does adding weather information available *at prediction time* improve travel-time prediction compared with otherwise identical models using traffic history alone?
 
-> **Status: Stage B/C (pipeline and baselines).** Real archived weather for Kumasi is fetched and cached; baseline code is tested on synthetic data only. **No real traffic data exists yet and no results have been produced.** This repository makes no performance claims. A null result (weather does not help) is an acceptable outcome.
+> **Study site.** The project began for Kumasi, Ghana, but no Kumasi travel-time data exists, so the reported experiments use an open dataset from another city: **MUTra-CDMX (Mexico City, Nov 2024 – Feb 2025)**. Findings describe that corridor only and say nothing about Ghana. The pipeline is location-agnostic, and the Kumasi tooling (OpenStreetMap segments, trip logging, weather cache) is kept for when real data exists. See `docs/research_plan.md` section 14 for the decision and its costs.
+>
+> A null result (weather does not help) is an acceptable outcome. Read `docs/RESULTS.md` for what was actually measured and the limits.
 
 ## Documents
 
@@ -78,10 +80,31 @@ Three feature sets per model: `traffic`, `traffic+forecast` (archived NWP foreca
 | `metrics.py` | MAE, RMSE, paired block bootstrap |
 | `models.py` | Gradient boosting and a small PyTorch network on identical, train-fitted features |
 | `experiment.py` | With vs without weather: same split, same tuning, paired bootstrap, power warnings |
+| `deep.py` | GRU over travel-time history; quantile network; shared training loop |
+| `zoo.py` | All architectures on one split, validation-based selection, placebo-weather test |
+| `mutra.py` | Loader for the MUTra-CDMX proxy dataset (drops reconstructed rows, local time) |
 | `evaluate.py` | Baselines across horizons, stamped with the data label |
 | `synthetic.py` | Labelled fake trips for software tests only |
 
 `data/private/` and `data/cache/` are git-ignored: trips are private, and weather is re-fetchable.
+
+## Reproducing the Mexico City experiment
+
+The dataset is not in this repository (licence status unresolved; travel times are TomTom output). Download `MUTra_CDMX_v4.0.rar` from [Zenodo, DOI 10.5281/zenodo.21617011](https://doi.org/10.5281/zenodo.21617011) (MD5 `b619f60eeca53b0b11191f7e979d2e28`), extract it so that `data/external/mutra/MUTra_CDMX_v4.0-rc1/data/MUTra_CDMX_completed.csv` exists, then:
+
+```bash
+python -m atmosnofear.cli --config configs/mexico_city.toml run-mutra
+```
+
+This fetches Open-Meteo weather for the corridor (cached), runs the matched with/without-weather experiment at 15/30/60 minutes, and writes `runs/mutra.csv` and `runs/mutra_comparisons.csv`. Cite the dataset and acknowledge TomTom and Meteosource.
+
+The full model comparison (boosting, MLP, GRU over 12 lags, quantile models, blend, residual targets, validation-based selection, and a shuffled-weather placebo test) runs with:
+
+```bash
+python -m atmosnofear.cli --config configs/mexico_city.toml run-zoo --seeds 0 --epochs 30
+```
+
+It trains many models on a CPU and takes a long time (the runtime was not measured precisely; plan for well over half an hour). Results and caveats are in [docs/RESULTS.md](docs/RESULTS.md).
 
 ## Principles
 

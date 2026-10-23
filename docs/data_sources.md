@@ -88,6 +88,30 @@ Stage B measured findings for OSM (queried via Overpass, 2026-10-23):
 - OSM has no travel times, and the shortest path may differ from the route a minibus actually takes.
 - ODbL attribution is in the README. Segment rows record `osm_ways=...` so each segment is reproducible.
 
+## 4b. MUTra-CDMX (Mexico City proxy dataset, used for the experiments)
+
+Retrieved 2026-10-23. Not committed to git (`data/external/` is ignored).
+
+| Item | Details |
+|---|---|
+| Title | MUTra-CDMX: Multisource Urban Traffic for CDMX (archive `MUTra_CDMX_v4.0.rar`, inner folder `v4.0-rc1`) |
+| Author / source | Arturo Carlos Rodriguez Roman (CENIDET). Zenodo DOI [10.5281/zenodo.21617011](https://doi.org/10.5281/zenodo.21617011) |
+| File | 3,064,249 bytes; MD5 `b619f60eeca53b0b11191f7e979d2e28` matched the value listed on Zenodo |
+| Coverage | 2024-11-01 to 2025-02-28, 5-minute, 20 consecutive segments (150 m to 2 km) on Insurgentes Sur, Mexico City; 691,200 rows, 8,936 reconstructed |
+| Travel times | TomTom Traffic Flow, "direct provider outputs" -> labelled `provider_estimate`, not observed by us |
+| Weather | Meteosource hourly historical weather, one corridor-level series -> labelled `provider_weather`; observed-style, **not a forecast** |
+| Licence | Zenodo page: CC BY 4.0. **The README inside the archive says licence verification is still pending** and that users must consult provider terms (TomTom, Meteosource). Treat the redistribution status as unresolved. |
+| Status | Release candidate (v4.0-rc1); one author; not independently validated |
+| Reuse rule here | Download locally for research, never commit the data or derived row-level files, cite the dataset and acknowledge TomTom and Meteosource |
+
+Measured properties of the dataset's weather: only 81 of 2,880 hours (2.8%) have 0.1 mm or more precipitation; 23 rainy days; 7 hours with 1 mm or more; maximum 2.8 mm/hour; 43.5 mm in total (Nov 34 h, Dec 16 h, Jan 10 h, Feb 21 h). This is dry-season data, so any rain-versus-dry comparison has very little power.
+
+Processing decisions (documented in `src/atmosnofear/mutra.py`):
+- Rows flagged `is_imputed` are dropped. The dataset reconstructed them partly by interpolation across gaps, which uses future values.
+- Timestamps are local (America/Mexico_City, UTC-6), converted to UTC; calendar features use local time.
+- 5-minute rows are aggregated to 15-minute bins by median.
+- The forecast-timed weather comes from Open-Meteo's archived ECMWF `ecmwf_ifs025` forecast at the corridor centre; Open-Meteo reanalysis and the dataset's own Meteosource weather are oracle-type upper bounds.
+
 ## 5. Per-source recording template
 
 Every dataset added to the repo gets a block like this in `data/README` or its own metadata file:
