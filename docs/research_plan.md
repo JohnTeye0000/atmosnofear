@@ -36,11 +36,40 @@ Legend used throughout the docs:
 
 **Main risks**
 1. **No traffic data → no project.** Stage B cannot start until a collection route is chosen (§4).
-2. **Too little rain in the data.** Kumasi has a bimodal rainy season (roughly Apr–Jul and Sep–Nov) [ASSUMPTION — confirm with climate normals]. A dry-season-only dataset *cannot* test the hypothesis, however large.
+2. **Too little rain in the data.** A dry-season-only dataset *cannot* test the hypothesis, however large. Gridded weather data (§2.1) shows rain is concentrated in roughly **late May to October**, so collection started now (late Oct 2026) would be almost entirely dry for about six months.
 3. **Weather resolution mismatch.** Gridded weather (~2–25 km) vs. a few-hundred-metre road segment; tropical convective rain is very local. Weather may add little simply because it is too coarse. That would be a finding about data resolution, not about weather.
 4. **Leakage.** Using observed/reanalysis weather for the prediction window gives the model information a real forecaster would not have (§7).
 5. **Small, noisy, irregular samples.** Participant-collected trips are irregular in time, unlike sensor data. This shapes the entire data schema (see `data_schema.md`).
 6. **Novelty overclaim.** A neural network for paratransit travel time in Kumasi already exists (§3).
+
+### 2.1 Rainy season: measured from cached weather data (Stage B)
+
+This replaces the earlier assumption of a bimodal "Apr–Jul and Sep–Nov" season, which was not checked and is **not what the data shows**.
+
+**Method.** Hourly Open-Meteo data for the grid point nearest Kumasi, Feb 2024 – Oct 2026 (about 2–3 years per calendar month). A "wet hour" is precipitation of at least 0.1 mm. Computed for two independent series: reanalysis and the `ecmwf_ifs025` archived forecast.
+
+| Month | Jan | Feb | Mar | Apr | May | Jun | Jul | Aug | Sep | Oct | Nov | Dec |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Wet hours, reanalysis (%) | 2.9 | 9.5 | 13.4 | 13.7 | 23.5 | 43.1 | 41.0 | 46.1 | 44.4 | 40.8 | 10.3 | 6.7 |
+| Wet hours, ECMWF forecast (%) | 3.4 | 8.7 | 18.5 | 20.6 | 27.9 | 46.6 | 42.2 | 47.0 | 49.7 | 44.9 | 10.0 | 6.2 |
+| Mean precip, reanalysis (mm/day) | 0.4 | 1.8 | 3.5 | 3.8 | 4.2 | 7.5 | 3.3 | 3.4 | 5.4 | 6.6 | 1.1 | 0.9 |
+
+**What this shows**
+- Wet-hour frequency is high and roughly flat from **June to October (about 41–50%)**, then drops sharply in **November (about 10%)** and stays low through February.
+- Rain *amount* has two peaks, **June (7.5 mm/day) and October (6.6 mm/day)**, with a dip in **July–August (about 3.3 mm/day)**. That fits a bimodal pattern in intensity, though not in how often it rains.
+- The year-by-year pattern is consistent across 2024, 2025 and 2026 (e.g. June 43/46/41% wet hours), so the seasonal shape looks stable in this short record.
+- The two series agree on the shape, though the forecast shows more wet hours in Mar–May. They are not independent; both are model output, so agreement does not validate either against real rain.
+
+**Caveats (important)**
+- This is **gridded model output, not observation.** Models tend to over-produce light drizzle, which inflates "wet hour" counts at the 0.1 mm threshold. A station or rain gauge could give a different picture.
+- Only 2–3 years per month; this is not a climate normal. Confirm against GMet climate normals before citing it as the Kumasi season.
+- The conclusions about *timing* are the robust part; the exact percentages are not.
+
+**Consequences for the plan**
+1. **Timing.** As of 2026-10-23 the wet period is ending. Hours with measurable rain fall to about 10% in November and 3–7% in Dec–Jan. Traffic data logged from now to March will be mostly dry-weather data. It is still useful for building the pipeline and for baselines, but it cannot answer the weather question.
+2. **Earliest rain test.** A meaningful rain-vs-dry comparison probably needs traffic data covering about **May–October 2027**. If that is too late for the application deadline, the options are partner data (CSIR-BRRI/KNUST, §4B) or reframing the first deliverable around the method, the pipeline and the dry-season baselines.
+3. **Evaluation split.** Because rain is seasonal, a chronological split can put nearly all rain into one fold. Report rainy-bin counts per train/val/test fold (§6) and prefer a test period that contains a wet stretch.
+4. **Seasonal confound.** Rain and season travel together. Any "weather helps" result could partly reflect season, school terms or other calendar effects. Calendar features and a rain-vs-dry comparison within the same weeks are needed before interpreting it.
 
 ## 3. Concise literature review
 
@@ -98,7 +127,7 @@ The original brief proposes forecasting temperature/rain. Recommended re-scoping
 All numbers are **[ASSUMPTION]** planning heuristics, to be revisited after seeing real variance.
 
 - **Segments:** 2–3 (start with 1 to prove the pipeline). Each defined by OSM way IDs / start-end coordinates and a direction.
-- **Time span:** ≥ 8–12 weeks continuous, **including at least part of a rainy season**. Longer is better; seasonal generalisation needs ≥ 1 year.
+- **Time span:** ≥ 8–12 weeks continuous, **within the wet period (roughly June–October, see §2.1)**. A window in November–March will contain too little rain. Longer is better; seasonal generalisation needs ≥ 1 year.
 - **Density:** enough observations to form a 15-minute-bin series per segment during daytime (e.g. 06:00–20:00). Irregular crowd data may need coarser bins (30-min) or aggregation.
 - **Rain coverage:** the *test* period must contain a meaningful number of rainy bins (target: dozens of distinct rain events; at minimum a few hundred rainy-bin observations). If not, the with/without-weather comparison has no power and we say so.
 - **Quality gate:** report % missing, % imputed, sample counts per segment × hour × weather condition before any modelling.
@@ -154,7 +183,7 @@ Order of complexity: small MLP (same features as M1/M2 → clean comparison) →
 1. Do you have, or can you get, any real travel-time data right now? From where, and under what permission?
 2. Which 1–3 segments in Kumasi do you travel regularly and could log yourself? (Your own consenting trips are a valid start.)
 3. Is there a supervisor/teacher who can help with ethics sign-off and an introduction to KNUST/CSIR-BRRI?
-4. What is the application deadline? (Determines whether you can cover a rainy season.)
+4. What is the application deadline? (The next heavy rain is probably May–October 2027, see §2.1. Does that fit, or do we need partner data?)
 5. Is a rain gauge / personal weather station feasible for ground truth?
 
 ## 12. Roadmap

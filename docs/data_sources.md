@@ -109,7 +109,7 @@ Measured on real API responses, retrieved 2026-10-23. These replace the matching
 5. **Grid points are not Kumasi.** Reanalysis snaps to about (6.7135, -1.5896), ~3.5 km away (elevation 275 m). `ecmwf_ifs025` is a 0.25 degree grid, snapping to (6.75, -1.50), roughly 15 km away. Each row stores `grid_lat`/`grid_lon`.
 6. **Remaining nulls** in the forecast series (precipitation 243 h, relative humidity 618 h, precipitation probability 2,088 h). They are never silently filled; an imputation policy is a Stage C decision. The reanalysis archive has no precipitation probability at all (100% null).
 7. **Still unresolved:** whether each forecast value comes from a run issued before the valid time (`issued_time_utc` is not exposed). The forecasts are therefore treated as "forecast-like" until Open-Meteo's documentation or a test confirms the lead time.
-8. **Seasonality, from the data.** Share of hours with at least 0.1 mm precipitation, by month (forecast series, mixed years): Jan 3.8%, Feb 9.3%, Mar 13.4%, Apr 13.7%, May 23.5%, Jun 43.1%, Jul 41.0%, Aug 46.1%, Sep 44.4%, Oct 40.8%, Nov 10.3%, Dec 6.7%. The rain-heavy period appears to be roughly Jun-Oct in this model, not Apr-Jul and Sep-Nov as assumed in `research_plan.md`. This is a gridded model, not station observation; treat it as a hint only. (This figure came from the earlier default-series cache, which equals reanalysis, so it describes reanalysis.)
+8. **Seasonality.** Rain is concentrated in roughly June to October, with a sharp drop in November. Computed on both reanalysis and `ecmwf_ifs025`; full table, method and caveats in `research_plan.md` section 2.1. Gridded model output, not observation.
 
 ## 7. Overall limitations to disclose in any report
 
