@@ -197,3 +197,20 @@ Order of complexity: small MLP (same features as M1/M2 → clean comparison) →
 | **E** | With/without-weather experiments, bootstrap CIs | — |
 | **F** | Dashboard over *real* results | Stage E complete |
 | **G** | Report, limitations, reproduction steps | — |
+
+## 13. Scope for the November 2026 application deadline
+
+Deadline: November 2026 (about one week from 2026-10-23). The wet-season test needs data from about May–October 2027 (§2.1), so **the research question cannot be answered by the deadline, and the application must not imply that it has been.**
+
+**What can honestly be presented**
+1. A rigorous, public research design: question, literature, leakage rules, data schema, first experiment, neural-network criteria (this repo, done).
+2. A working, tested, incrementally updating data pipeline with real Kumasi weather (done).
+3. Two measured findings that came from real data, not assumptions: the default "forecast" series equals reanalysis (a leakage trap), and the rainy season is June–October, not the textbook split.
+4. Early real Kumasi trip data from the user's own consented logging: sample size and dates reported exactly, labelled dry-season, **no weather claim**.
+5. Simple baselines (historical mean, persistence) running on whatever real trips exist, with plumbing tests on clearly labelled synthetic rows.
+
+**What must not be claimed:** any model accuracy, any weather effect, any neural-network result, or "first" in Kumasi.
+
+**Optional proxy (user decision):** the Zindi Accra Mobility data (Sept 2024) could run the same pipeline end to end on real traffic plus weather, labelled as an Accra proxy. Terms unchecked; the user must register and accept them.
+
+**After the deadline:** continue logging through the 2027 wet season, then run Stage C–E.
