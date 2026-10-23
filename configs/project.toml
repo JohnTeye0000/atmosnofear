@@ -1,0 +1,18 @@
+# Project configuration. Edit values here instead of in code.
+[location]
+name = "Kumasi"
+latitude = 6.6885
+longitude = -1.6244
+
+[weather]
+# Variables requested from Open-Meteo (hourly).
+variables = ["temperature_2m", "precipitation", "precipitation_probability", "relative_humidity_2m", "cloud_cover"]
+# NWP model for the archived-forecast series. REQUIRED: the default series equals reanalysis.
+forecast_model = "ecmwf_ifs025"
+# First date to fetch when the cache is empty. ecmwf_ifs025 history in the Historical Forecast API begins 2024-02-03 (measured; earlier hours are null).
+start_date = "2024-02-03"
+
+[paths]
+weather_cache_dir = "data/cache"
+trips_file = "data/private/trips.csv"
+segments_file = "data/private/segments.csv"

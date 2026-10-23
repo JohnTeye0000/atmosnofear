@@ -1,0 +1,21 @@
+[project]
+name = "atmosnofear"
+version = "0.1.0"
+description = "Weather-aware travel-time prediction for Kumasi, Ghana"
+requires-python = ">=3.11"
+dependencies = ["numpy", "pandas", "requests"]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+ml = ["scikit-learn", "torch"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

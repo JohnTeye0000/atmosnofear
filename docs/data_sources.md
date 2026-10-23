@@ -98,7 +98,20 @@ missing_data_notes:
 may_be_redistributed: yes | no
 ```
 
-## 6. Overall limitations to disclose in any report
+## 6. Stage B measured findings (Open-Meteo, Kumasi 6.6885, -1.6244)
+
+Measured on real API responses, retrieved 2026-10-23. These replace the matching [UNRESOLVED] items above.
+
+1. **The default "forecast" series is not a forecast.** Requesting the Historical Forecast API without `models=` returned values identical to the reanalysis archive for 100% of hours (temperature and precipitation). Using it as "forecast weather" would have silently leaked reanalysis into the features. The client now refuses a forecast request without an explicit model.
+2. **Explicit models give genuinely different series.** For June 2025, precipitation matched the archive in 52.5% of hours (`ecmwf_ifs025`), 44.9% (`gfs_seamless`), 31.5% (`icon_seamless`), 32.1% (`ecmwf_aifs025_single`). For the full cached range, `ecmwf_ifs025` matches reanalysis precipitation in 68.1% of hours, with a temperature MAE of 0.50 C.
+3. **Chosen forecast model: `ecmwf_ifs025`**, configured in `configs/project.toml`. Model choice is a modelling decision; revisit it in Stage E rather than treating it as settled.
+4. **History start.** `ecmwf_ifs025` values are null before 2024-02-03, so the cache starts there. About 23,800 hourly rows to 2026-10-22.
+5. **Grid points are not Kumasi.** Reanalysis snaps to about (6.7135, -1.5896), ~3.5 km away (elevation 275 m). `ecmwf_ifs025` is a 0.25 degree grid, snapping to (6.75, -1.50), roughly 15 km away. Each row stores `grid_lat`/`grid_lon`.
+6. **Remaining nulls** in the forecast series (precipitation 243 h, relative humidity 618 h, precipitation probability 2,088 h). They are never silently filled; an imputation policy is a Stage C decision. The reanalysis archive has no precipitation probability at all (100% null).
+7. **Still unresolved:** whether each forecast value comes from a run issued before the valid time (`issued_time_utc` is not exposed). The forecasts are therefore treated as "forecast-like" until Open-Meteo's documentation or a test confirms the lead time.
+8. **Seasonality, from the data.** Share of hours with at least 0.1 mm precipitation, by month (forecast series, mixed years): Jan 3.8%, Feb 9.3%, Mar 13.4%, Apr 13.7%, May 23.5%, Jun 43.1%, Jul 41.0%, Aug 46.1%, Sep 44.4%, Oct 40.8%, Nov 10.3%, Dec 6.7%. The rain-heavy period appears to be roughly Jun-Oct in this model, not Apr-Jul and Sep-Nov as assumed in `research_plan.md`. This is a gridded model, not station observation; treat it as a hint only. (This figure came from the earlier default-series cache, which equals reanalysis, so it describes reanalysis.)
+
+## 7. Overall limitations to disclose in any report
 
 - Weather grid ≠ road-segment location; rain is hyper-local.
 - Archived forecasts since ~2022 only → short span for seasonal analysis.
