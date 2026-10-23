@@ -81,6 +81,13 @@ Checklist
 - [ ] Add OSM attribution
 - [ ] Note that OSM has no travel times or speeds
 
+Stage B measured findings for OSM (queried via Overpass, 2026-10-23):
+- 219 named trunk/primary/secondary ways in the Kumasi bounding box (6.62..6.78 N, -1.70..-1.53 E), 41 road names (Lake Road, Accra Road, Osei Tutu II Boulevard, Kumasi-Techiman, Bekwai Road, the bypasses and others).
+- Dual carriageways are separate one-way ways, so segment direction is modelled correctly.
+- Only major roads are loaded. Tertiary and local roads, and many junction names, are not, so some landmark pairs have no path ("no drivable path" error).
+- OSM has no travel times, and the shortest path may differ from the route a minibus actually takes.
+- ODbL attribution is in the README. Segment rows record `osm_ways=...` so each segment is reproducible.
+
 ## 5. Per-source recording template
 
 Every dataset added to the repo gets a block like this in `data/README` or its own metadata file:

@@ -9,6 +9,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from . import segments as seg_mod
 from . import synthetic
 from . import trips as trips_mod
 from . import weather
@@ -60,6 +61,46 @@ def cmd_validate(args) -> None:
         print(" -", issue)
 
 
+def _osm(args, cfg) -> list[dict]:
+    cache = cfg["paths"].get("osm_cache", "data/cache/osm_kumasi_roads.json")
+    return seg_mod.fetch_roads(Path(cache), refresh=getattr(args, "refresh", False))
+
+
+def _point(text: str, elements: list[dict]) -> tuple[float, float]:
+    """'lat,lon' or the name of an OSM way such as a roundabout."""
+    parts = text.split(",")
+    if len(parts) == 2:
+        try:
+            return float(parts[0]), float(parts[1])
+        except ValueError:
+            pass
+    return seg_mod.find_landmark(elements, text)
+
+
+def cmd_osm_roads(args) -> None:
+    summary = seg_mod.road_summary(_osm(args, _config(args.config)))
+    print(summary.round({"km": 1}).to_string(index=False))
+    print("\nRoad data (c) OpenStreetMap contributors (ODbL). Use road names or landmark names with add-segment.")
+
+
+def cmd_add_segment(args) -> None:
+    cfg = _config(args.config)
+    elements = _osm(args, cfg)
+    roads = {r.strip() for r in args.roads.split(",")} if args.roads else None
+    row, line = seg_mod.build_segment(elements, args.id, args.name, args.direction,
+                                      _point(args.start, elements), _point(args.end, elements), roads)
+    print(f"{row['segment_id']}: {row['length_m'] / 1000:.2f} km "
+          f"({row['start_lat']}, {row['start_lon']}) -> ({row['end_lat']}, {row['end_lon']}), {len(line)} points")
+    print(row["notes"])
+    if args.dry_run:
+        print("dry run: nothing saved")
+        return
+    seg_mod.append_segment(Path(cfg["paths"]["segments_file"]), row)
+    geo_dir = Path(cfg["paths"]["segments_file"]).parent / "segment_geometry"
+    seg_mod.write_geojson(geo_dir / f"{row['segment_id']}.geojson", row["segment_id"], line)
+    print(f"Saved to {cfg['paths']['segments_file']} and {geo_dir / (row['segment_id'] + '.geojson')}")
+
+
 def cmd_make_synthetic(args) -> None:
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
@@ -101,6 +142,19 @@ def main() -> None:
     lt.add_argument("--start", help="ISO time in UTC; default now")
     lt.set_defaults(fn=cmd_log_trip)
     sub.add_parser("validate", help="check the trip log").set_defaults(fn=cmd_validate)
+    orp = sub.add_parser("osm-roads", help="list named major roads in Kumasi from OpenStreetMap")
+    orp.add_argument("--refresh", action="store_true", help="re-download instead of using the cache")
+    orp.set_defaults(fn=cmd_osm_roads)
+    asg = sub.add_parser("add-segment", help="define a segment as a drivable path between two points")
+    asg.add_argument("--id", required=True)
+    asg.add_argument("--name", required=True)
+    asg.add_argument("--direction", required=True, help="e.g. inbound, outbound, northbound")
+    asg.add_argument("--from", dest="start", required=True, help="'lat,lon' or an OSM name (e.g. a roundabout)")
+    asg.add_argument("--to", dest="end", required=True, help="'lat,lon' or an OSM name")
+    asg.add_argument("--roads", help="comma-separated road names to restrict the path to")
+    asg.add_argument("--refresh", action="store_true")
+    asg.add_argument("--dry-run", action="store_true", help="show length and endpoints without saving")
+    asg.set_defaults(fn=cmd_add_segment)
     ms = sub.add_parser("make-synthetic", help="write labelled SYNTHETIC trips for testing")
     ms.add_argument("--out", default="data/synthetic")
     ms.add_argument("--days", type=int, default=28)

@@ -29,7 +29,17 @@ Fetch only the weather hours not yet cached. It is safe to re-run at any time, s
 python -m atmosnofear.cli update-weather
 ```
 
-Traffic logging (once you have 1-3 real segments in `data/private/segments.csv`; see `configs/segments.example.csv` for the columns):
+Define real segments from OpenStreetMap. The path is found on the road network (one-way roads respected) and measured along the road:
+
+```bash
+python -m atmosnofear.cli osm-roads                      # list named major roads
+python -m atmosnofear.cli add-segment --id KSI_SUAME_AIRPORT_EB --name "Suame to Airport" \
+    --direction eastbound --from "Suame Roundabout" --to "Airport Roundabout" --dry-run
+```
+
+`--from`/`--to` take an OSM name (e.g. a roundabout) or `lat,lon`. Drop `--dry-run` to save to `data/private/segments.csv` and `data/private/segment_geometry/`. Use `--roads "Accra Road,Osei Tutu II Boulevard"` to keep the path on the roads you actually travel. The path is the shortest drivable route on OSM, which may differ from a trotro's real route, so check the geometry file.
+
+Traffic logging (needs segments in `data/private/segments.csv`; see `configs/segments.example.csv` for the columns):
 
 ```bash
 python -m atmosnofear.cli log-trip --segment SEG_ID --duration-s 840 --collector P001
@@ -50,6 +60,7 @@ With real trips in `data/private/`, run `python -m atmosnofear.cli evaluate-base
 | Module | Purpose |
 |---|---|
 | `weather.py` | Open-Meteo client, incremental cache, forecast vs reanalysis kept apart |
+| `segments.py` | OSM roads, directed path finding, segment definitions |
 | `trips.py` | Trip log format and validation |
 | `binning.py` | Trips to a regular 15-minute series (median, count) |
 | `features.py` | Leakage-safe examples; weather attached only with matching data labels |
