@@ -11,6 +11,7 @@ venv/
 data/raw/
 data/private/
 data/cache/
+data/synthetic/
 *.parquet
 *.sqlite
 

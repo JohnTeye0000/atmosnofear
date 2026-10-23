@@ -4,7 +4,7 @@ Weather-aware travel-time prediction for road segments in Kumasi, Ghana.
 
 **Research question:** On selected Kumasi road segments, does adding weather information available *at prediction time* improve travel-time prediction compared with otherwise identical models using traffic history alone?
 
-> **Status: Stage B (data pipeline).** Real archived weather for Kumasi is fetched and cached. **No real traffic data exists yet and no model has been trained.** This repository makes no performance claims. A null result (weather does not help) is an acceptable outcome.
+> **Status: Stage B/C (pipeline and baselines).** Real archived weather for Kumasi is fetched and cached; baseline code is tested on synthetic data only. **No real traffic data exists yet and no results have been produced.** This repository makes no performance claims. A null result (weather does not help) is an acceptable outcome.
 
 ## Documents
 
@@ -35,6 +35,29 @@ Traffic logging (once you have 1-3 real segments in `data/private/segments.csv`;
 python -m atmosnofear.cli log-trip --segment SEG_ID --duration-s 840 --collector P001
 python -m atmosnofear.cli validate
 ```
+
+Baselines (historical mean and persistence, chronological split, horizons 15/30/60 min). Try it now on labelled **synthetic** data, which tests the software and says nothing about Kumasi:
+
+```bash
+python -m atmosnofear.cli make-synthetic
+python -m atmosnofear.cli evaluate-baselines --trips data/synthetic/trips.csv --segments data/synthetic/segments.csv
+```
+
+With real trips in `data/private/`, run `python -m atmosnofear.cli evaluate-baselines` and the output carries the data label.
+
+## Code map
+
+| Module | Purpose |
+|---|---|
+| `weather.py` | Open-Meteo client, incremental cache, forecast vs reanalysis kept apart |
+| `trips.py` | Trip log format and validation |
+| `binning.py` | Trips to a regular 15-minute series (median, count) |
+| `features.py` | Leakage-safe examples; weather attached only with matching data labels |
+| `split.py` | Chronological train/val/test with a gap |
+| `baselines.py` | Historical mean, persistence |
+| `metrics.py` | MAE, RMSE, paired block bootstrap |
+| `evaluate.py` | Baselines across horizons, stamped with the data label |
+| `synthetic.py` | Labelled fake trips for software tests only |
 
 `data/private/` and `data/cache/` are git-ignored: trips are private, and weather is re-fetchable.
 
