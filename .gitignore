@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ipynb_checkpoints/
+*.egg-info/
+
+# Data that must never be committed (privacy / licence)
+data/raw/
+data/private/
+data/cache/
+*.parquet
+*.sqlite
+
+# Secrets
+.env
+*.key
+
+# Model artefacts
+runs/
+checkpoints/
+*.pt
+*.pth
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
